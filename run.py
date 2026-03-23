@@ -34,7 +34,7 @@ parser.add_argument('--saved', type=str, default='')
 # train 
 parser.add_argument('--epoch', default=30, type=int)
 parser.add_argument('--start_epoch', default=0, type=int)
-parser.add_argument('--batch_size', default=16, type=int)
+parser.add_argument('--batch_size', default=2, type=int)
 parser.add_argument('--lr', default=1e-3, type=float, help='finetune to get better performance')
 parser.add_argument('--lr_decay_epoch', default=[10], type=list)
 parser.add_argument('--lr_decay_rate', default=0.1, type=float)
