@@ -58,7 +58,7 @@ class SpatialAware_WassersteinDistance(torch.nn.Module):
 
         return M
 
-    def forward(self, X, Y, H, W):
+    def forward(self, X, Y, D, H, W):
         """Calculate Spatially-weighted Wasserstein metric based on input tensors.
             X, Y : Persistent diagram of class:`PersistenceInformation`
             H, W : Height and weight of the image to normalize the spatial distance
