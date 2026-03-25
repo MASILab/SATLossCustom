@@ -1,27 +1,26 @@
+import nibabel as nib
 import numpy as np
+import torch
+from pathlib import Path
+
 from utils.losses import PDMatchingLoss
-import torch 
 
 
-class dummy():
+class Dummy:
     precal_PD = False
 
-H, W = 64, 64
 
-gt, pred_connected, pred_disjoint = np.zeros((1, 1, H, W), dtype=float), np.zeros((1, 1, H, W), dtype=float), np.zeros((1, 1, H, W), dtype=float)
-gt[0][0][16:32][12:24] = 1
-pred_connected[0][0][16:32][12:24] = 1
-pred_disjoint[0][0][16:22][12:18] = 1
-pred_disjoint[0][0][28:32][22:24] = 1
+path = Path('/home/local/VANDERBILT/shij18/eye_group_tem/modified_seg/PHOTON-x-13853-x-13853_20161028_MR-x-9-SEG.nii.gz')
 
-gt_t = torch.tensor(gt, dtype=float)
-predc_t = torch.tensor(pred_connected, dtype=float)
-predd_t = torch.tensor(pred_disjoint, dtype=float)
+nii = nib.load(path)
+data = nii.get_fdata()
 
-loss_fn = PDMatchingLoss(dummy())
+data = (data > 0).astype(np.float32)
 
-loss_same = loss_fn(gt_t, predc_t)
-loss_cut = loss_fn(gt_t, predd_t)
+vol = torch.tensor(data, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
 
-print(loss_same)
-print(loss_cut)
+loss_fn = PDMatchingLoss(Dummy())
+
+loss = loss_fn(vol, vol)
+
+print("self-loss:", loss.item())

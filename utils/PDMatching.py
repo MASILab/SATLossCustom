@@ -61,9 +61,9 @@ class SpatialAware_WassersteinDistance(torch.nn.Module):
     def forward(self, X, Y, D, H, W):
         """Calculate Spatially-weighted Wasserstein metric based on input tensors.
             X, Y : Persistent diagram of class:`PersistenceInformation`
-            H, W : Height and weight of the image to normalize the spatial distance
+            D, H, W : Height and weight of the image to normalize the spatial distance
         """
-        total_cost = 0.0
+        total_cost = torch.tensor(0.0)
 
         X = wrap_if_not_iterable(X)
         Y = wrap_if_not_iterable(Y)
@@ -75,18 +75,30 @@ class SpatialAware_WassersteinDistance(torch.nn.Module):
 
             # Creator pixel coordinate for each homology class
             # We don't use the destroyer since infinite persistent might occur
-            C1 = pers_info[0].pairing[:,:2].float()
-            C2 = pers_info[1].pairing[:,:2].float()
+            C1 = pers_info[0].pairing[:,:3].float()
+            C2 = pers_info[1].pairing[:,:3].float()
 
-            # Normalize pixel coordinate (0->H, 0->W) to (0->1, 0->1)
-            C1[:, 0] /= H
-            C2[:, 0] /= H
-            C1[:, 1] /= W
-            C2[:, 1] /= W
+            # Normalize pixel coordinate
+            C1[:, 0] /= D
+            C2[:, 0] /= D
+            C1[:, 1] /= H
+            C2[:, 1] /= H
+            C1[:, 2] /= W
+            C2[:, 2] /= W
 
             n = len(D1)
             m = len(D2)
 
+            #handle cases where n and m are 0, prevent warining
+            if n == 0 and m == 0:
+                continue
+            if n == 0:
+                total_cost += self._distance_to_diagonal(D2).pow(self.q).sum()
+                continue
+            if m == 0:
+                total_cost += self._distance_to_diagonal(D1).pow(self.q).sum()
+                continue    
+            
             # Spatially-weighted cost matrix for the Wasserstein matching
             dist = self._make_distance_matrix(D1, D2, C1, C2)
 
