@@ -39,10 +39,11 @@ parser.add_argument('--lr_decay_rate', default=0.1, type=float)
 parser.add_argument('--wd', default=1e-3, type=float)
 parser.add_argument('--betas', default=[0.9, 0.999])
 parser.add_argument('--eps', default=1e-8, type=float)
+parser.add_argument('--tau', default=1e-2, type=float)
+parser.add_argument('--alpha', default=1, type=float)
 parser.add_argument('--save_model_interval', type=int, default=10)
 parser.add_argument('--print_freq', type=int, default=100)
 parser.add_argument('--print_log', type=int, default=10)
-
 parser.add_argument(
     '--test_model',
     type=str,

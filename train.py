@@ -1,6 +1,7 @@
 import os
 import torch
 import numpy as np
+import wandb
 
 from utils.losses import PDMatchingLoss
 from utils.dataset import Topo_dataloader
@@ -14,7 +15,6 @@ def train_one_epoch(args, model, optimizer, criterion, dataloader, epoch):
 
     epoch_lr = adj_lr(args.lr, epoch, args.lr_decay_epoch, args.lr_decay_rate)
     optimizer.param_groups[0]['lr'] = epoch_lr
-    print('lr: {}'.format(optimizer.param_groups[0]['lr']))
 
     model.train()
 
@@ -27,8 +27,12 @@ def train_one_epoch(args, model, optimizer, criterion, dataloader, epoch):
         pred = model(samples)
 
         loss_pixel = criterion['pixel'](pred, target)
+        pred_prob = torch.sigmoid(pred)
 
-        loss_topo = criterion['topo'](pred.cpu(), target.cpu(), img_names).to(args.device)
+        if args.tloss_w > 0:
+            loss_topo = criterion['topo'](pred_prob.cpu(), target.cpu(), img_names).to(args.device)
+        else:
+            loss_topo = torch.tensor(0.0, device=args.device)
 
         loss = loss_pixel + args.tloss_w * loss_topo
 
@@ -63,7 +67,7 @@ def validate(args, model, dataloader):
 
             pred = model(samples)
 
-            pred = (pred > 0.5).to(torch.float32)
+            pred = (pred > 0.0).to(torch.float32)
 
             acc = pixel_accuracy(pred, target)
             dice = dice_score(pred, target)
@@ -79,6 +83,23 @@ def validate(args, model, dataloader):
 
 
 def trainer(args, model):
+    wandb.init(
+        entity="justin-shi9871-vanderbilt-university",
+        project="topologial-loss-unet-small-train",
+        name=args.exp,
+        config={
+            "learning_rate": args.lr,
+            "architecture": args.model,
+            "dataset": args.dataset,
+            "epochs": args.epoch,
+            "batch_size": args.batch_size,
+            "tau": args.tau, 
+            "alpha": args.alpha,
+            "tloss_w": args.tloss_w,
+            "precal_PD": args.precal_PD,
+        }
+    )
+
     optimizer = torch.optim.Adam(
         model.parameters(),
         lr=args.lr,
@@ -88,9 +109,9 @@ def trainer(args, model):
     )
 
     criterion = {}
-    criterion['pixel'] = torch.nn.BCELoss()
+    pos_weight = torch.tensor([2298.0]).to(args.device)
+    criterion['pixel'] = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     criterion['topo'] = PDMatchingLoss(args)
-
     train_dataset = Topo_dataloader(os.path.join(args.dataroot, args.dataset), 'train')
     val_dataset = Topo_dataloader(os.path.join(args.dataroot, args.dataset), 'val')
 
@@ -112,11 +133,10 @@ def trainer(args, model):
         for step, (samples, target, img_names) in enumerate(train_loader):
             if step % 10 == 0:
                 print('{}/{}'.format(step, len(train_loader)))
-
             target = target.to(torch.float32)
             criterion['topo']._pre_compute_PD(target, img_names)
 
-    best_val_metric = {'acc': 0, 'dice': 0}
+    best_val_metric = {'acc': 0,'dice': 0}
     trainlossmeter = {'pixel': [], 'topo': []}
     valmetricmeter = {'acc': [], 'dice': []}
 
@@ -132,6 +152,15 @@ def trainer(args, model):
         val_metric = validate(args, model, val_loader)
         valmetricmeter['acc'].append(val_metric[0])
         valmetricmeter['dice'].append(val_metric[1])
+
+        wandb.log({
+            'epoch': epoch + 1,
+            'train/pixel_loss': train_loss[0].item(),
+            'train/topo_loss': train_loss[1].item(),
+            'val/acc': val_metric[0],
+            'val/dice': val_metric[1],
+            'lr': optimizer.param_groups[0]['lr'],
+        })
 
         if (epoch + 1) % args.save_model_interval == 0:
             print('Saving model @ epoch ', epoch + 1)
@@ -154,3 +183,5 @@ def trainer(args, model):
     print(trainlossmeter)
     print(valmetricmeter)
     print(best_val_metric)
+
+    wandb.finish()

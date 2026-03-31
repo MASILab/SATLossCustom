@@ -13,7 +13,8 @@ class PDMatchingLoss(nn.Module):
         # distance between persistent diagrams
         #CORRECT THIS 
         self.criterion = SpatialAware_WassersteinDistance(p=p)
-
+        self.tau = opt.tau
+        self.alpha = opt.alpha
         # For precomputed ground truth persistent diagram.
         self.precal_PD = opt.precal_PD
         self.PD_target = {}
@@ -74,11 +75,11 @@ class PDMatchingLoss(nn.Module):
             img = padded_target[i,0,:,:,:].unsqueeze(0).unsqueeze(0)
             self.PD_target[img_names[i]] = self.getPersistentInfo(img)
 
-            #DEBUG
-            print("img name:", img_names[i])
-            print("type:", type(self.PD_target[img_names[i]]))
-            print("len:", len(self.PD_target[img_names[i]]))
-            print("value:", self.PD_target[img_names[i]])
+            # #DEBUG
+            # print("img name:", img_names[i])
+            # print("type:", type(self.PD_target[img_names[i]]))
+            # print("len:", len(self.PD_target[img_names[i]]))
+            # print("value:", self.PD_target[img_names[i]])
             break
 
     def forward(self, input, target, img_names=None):
@@ -118,37 +119,33 @@ class PDMatchingLoss(nn.Module):
         else:
             pi_y = self.getPersistentInfo(padded_target)
 
-        tau = 0.1
-        alpha = 1.0
-
-
         for i in range(N):
             #H0 - connected componets
             pd_x_0 = pi_x[i][0][0]
             #punish more if > 2 connected compontes are detected, (edgecase for seperated GT optic nerve case)
             pd = pd_x_0.diagram
             pers = torch.abs(pd[:, 1] - pd[:, 0])
-            num_meaningful = torch.sum(pers > tau)
+            num_meaningful = torch.sum(pers > self.tau)
             extra = torch.clamp(num_meaningful - 2, min=0)
 
-            loss += alpha * extra.float()
+            loss += self.alpha * extra.float()
 
             pd_y_0 = pi_y[i][0][0]
 
             # #H1 tunnels - loops 
-            pd_x_1 = pi_x[i][0][1]
-            pd_y_1 = pi_y[i][0][1]
+            # pd_x_1 = pi_x[i][0][1]
+            # pd_y_1 = pi_y[i][0][1]
             
             # #H2 cavities - voids
-            pd_x_2 = pi_x[i][0][2]
-            pd_y_2 = pi_y[i][0][2]
+            # pd_x_2 = pi_x[i][0][2]
+            # pd_y_2 = pi_y[i][0][2]
 
             # 2-nd persistant diagram ()
             wd_0 = self.criterion(pd_x_0, pd_y_0, D, H, W)
-            wd_1 = self.criterion(pd_x_1, pd_y_1, D, H, W)
-            wd_2 = self.criterion(pd_x_2, pd_y_2, D, H, W)
+            # wd_1 = self.criterion(pd_x_1, pd_y_1, D, H, W)
+            # wd_2 = self.criterion(pd_x_2, pd_y_2, D, H, W)
 
-            loss += (wd_0 + wd_1 + wd_2)
+            loss += (wd_0)
 
         loss /= N
 

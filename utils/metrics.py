@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 import math
 from torch_topological.nn import CubicalComplex
-from skimage.morphology import skeletonize, skeletonize_3d
+from skimage.morphology import skeletonize
 
 getPersistentInfo = CubicalComplex(dim=3)
 
@@ -143,8 +143,8 @@ def clDice_ins(v_p, v_l):
         tprec = cl_score(v_p, skeletonize(v_l))
         tsens = cl_score(v_l, skeletonize(v_p))
     elif len(v_p.shape) == 3:
-        tprec = cl_score(v_p, skeletonize_3d(v_l))
-        tsens = cl_score(v_l, skeletonize_3d(v_p))
+        tprec = cl_score(v_p, skeletonize(v_l))
+        tsens = cl_score(v_l, skeletonize(v_p))
     else:
         raise ValueError(f"Unsupported input shape for clDice_ins: {v_p.shape}")
 

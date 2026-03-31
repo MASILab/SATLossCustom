@@ -114,7 +114,7 @@ class UNet(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        return self.sigmoid(logits)
+        return logits
 
 
 class UNet_small(nn.Module):
@@ -137,7 +137,6 @@ class UNet_small(nn.Module):
         self.up3 = Up(64, 32 // factor, trilinear)
         self.up4 = Up(32, 16, trilinear)
         self.outc = OutConv(16, n_classes)
-        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x1 = self.inc(x)
@@ -154,4 +153,4 @@ class UNet_small(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        return self.sigmoid(logits)
+        return logits

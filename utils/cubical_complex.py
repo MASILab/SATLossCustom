@@ -5,7 +5,6 @@ from torch import nn
 
 from torch_topological.nn import PersistenceInformation
 import gudhi
-
 class CubicalComplex(nn.Module):
     def __init__(self, superlevel=False, dim=2):
         super().__init__()
